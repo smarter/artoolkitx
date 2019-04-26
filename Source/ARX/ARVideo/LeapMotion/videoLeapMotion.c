@@ -223,9 +223,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
 
     if (hasFrame) {
         for (int y = 0; y < height; y++) {
-            for (int x = 0; x < width; x++) {
-                dst[x] = src[x];
-            }
+            memcpy(dst, src, width);
             src += width;
             dst += vid->bufWidth;
         }
