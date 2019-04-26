@@ -53,6 +53,7 @@ typedef struct {
     AR_PIXEL_FORMAT    format;
     int                bufWidth;
     int                bufHeight;
+    int                stereo_part;
 } AR2VideoParamLeapMotionT;
 
 int                    ar2VideoDispOptionLeapMotion     ( void );

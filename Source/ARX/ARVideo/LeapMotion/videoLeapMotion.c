@@ -45,42 +45,19 @@
 #include <string.h> // memset()
 
 #define AR_VIDEO_LEAPMOTION_XSIZE   640
-#define AR_VIDEO_LEAPMOTION_YSIZE   480
-#define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT   AR_PIXEL_FORMAT_RGB
+#define AR_VIDEO_LEAPMOTION_YSIZE   240
+#define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT   AR_PIXEL_FORMAT_MONO
 
-void OnFrame(const LEAP_TRACKING_EVENT *frame){
-  printf("Got frame: %d\n", (int32_t)frame->tracking_frame_id);
-}
-
-void OnImage(const LEAP_IMAGE_EVENT *imageEvent){
-    printf("Received image set for frame %lli with size %lli.\n",
-           (long long int)imageEvent->info.frame_id,
-           (long long int)imageEvent->image[0].properties.width*
-           (long long int)imageEvent->image[0].properties.height*2);
-}
+#define ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART 0
+#define ARVIDEO_INPUT_LEAPMOTION_RIGHT_STEREO_PART 1
+#define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART
 
 int ar2VideoDispOptionLeapMotion( void )
 {
     ARPRINT(" -module=LeapMotion\n");
     ARPRINT("\n");
-    ARPRINT(" -width=N\n");
-    ARPRINT("    specifies width of image.\n");
-    ARPRINT(" -height=N\n");
-    ARPRINT("    specifies height of image.\n");
-    ARPRINT(" -format=X\n");
-    ARPRINT("    specifies format of image pixels.\n");
-    ARPRINT("    Acceptable values for X are:\n");
-    ARPRINT("    RGB (24 bpp)\n");
-    ARPRINT("    BGR (24 bpp)\n");
-    ARPRINT("    RGBA (32 bpp)\n");
-    ARPRINT("    BGRA (32 bpp)\n");
-    ARPRINT("    ARGB (32 bpp)\n");
-    ARPRINT("    ABGR (32 bpp)\n");
-    ARPRINT("    RGBA_5551 (16 bpp)\n");
-    ARPRINT("    RGBA_4444 (16 bpp)\n");
-    ARPRINT("    RGBA_565 (16 bpp)\n");
-    ARPRINT("    Byte ordering in each case is big-endian, e.g. in RGB format\n");
-    ARPRINT("    R occupies the lowest byte in memory, then G, then B. \n");
+    ARPRINT(" -stereo_part=N\n");
+    ARPRINT("    Either \"left\" or \"right\" stereo part, default to \"left\".\n");
     ARPRINT("\n");
 
     return 0;
@@ -119,6 +96,7 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     vid->width  = AR_VIDEO_LEAPMOTION_XSIZE;
     vid->height = AR_VIDEO_LEAPMOTION_YSIZE;
     vid->format = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT;
+    vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART;
 
     a = config;
     if (a != NULL) {
@@ -127,58 +105,14 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
             if (*a == '\0') break;
 
             if (sscanf(a, "%s", b) == 0) break;
-            if (strncmp(b, "-width=", 7) == 0) {
-                if (sscanf(&b[7], "%d", &vid->width) == 0) {
-                    ar2VideoDispOptionLeapMotion();
-                    goto bail;
+            if (strncmp(b, "-stereo_part=", 13 ) == 0) {
+                if (strcmp(b+13, "left") == 0) {
+                    vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART;
+                } else if (strcmp(b+13, "right") == 0) {
+                    vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_RIGHT_STEREO_PART;
                 }
             }
-            else if (strncmp(b, "-height=", 8) == 0) {
-                if (sscanf(&b[8], "%d", &vid->height) == 0 ) {
-                    ar2VideoDispOptionLeapMotion();
-                    goto bail;
-                }
-            }
-            else if (strncmp(b, "-format=", 8 ) == 0) {
-                if (strcmp(b+8, "RGBA_5551") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_RGBA_5551;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in RGBA_5551.\n");
-                } else if (strcmp(b+8, "RGBA_4444") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_RGBA_4444;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in RGBA_4444.\n");
-                } else if (strcmp(b+8, "RGBA") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_RGBA;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in RGBA.\n");
-                } else if (strcmp(b+8, "RGB_565") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_RGB_565;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in RGB_565.\n");
-                } else if (strcmp(b+8, "RGB") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_RGB;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in RGB.\n");
-                } else if (strcmp(b+8, "ARGB") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_ARGB;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in ARGB.\n");
-                } else if (strcmp(b+8, "ABGR") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_ABGR;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in ABGR.\n");
-                } else if (strcmp(b+8, "BGRA") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_BGRA;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in BGRA.\n");
-                } else if (strcmp(b+8, "BGR") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_BGR;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in BGR.\n");
-                } else if (strcmp(b+8, "420f") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_420f;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in 420f.\n");
-                } else if (strcmp(b+8, "NV21") == 0) {
-                    vid->format = AR_PIXEL_FORMAT_NV21;
-                    ARLOGi("LeapMotion video will return red-green-blue bars in NV21.\n");
-                }
-            }
-            else if (strcmp(b, "-bufferpow2") == 0)    {
-                bufferpow2 = 1;
-            }
-            else if (strcmp(b, "-module=LeapMotion") == 0)    {
+            else if (strcmp(b, "-module=LeapMotion") == 0) {
             }
             else {
                 ARLOGe("Error: unrecognised video configuration option \"%s\".\n", a);
@@ -190,14 +124,8 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
         }
     }
 
-    if (bufferpow2) {
-        bufSizeX = bufSizeY = 1;
-        while (bufSizeX < vid->width) bufSizeX *= 2;
-        while (bufSizeY < vid->height) bufSizeY *= 2;
-    } else {
-        bufSizeX = vid->width;
-        bufSizeY = vid->height;
-    }
+    bufSizeX = vid->width;
+    bufSizeY = vid->height;
 
     vid->format = AR_PIXEL_FORMAT_MONO;
     bufSizeX = vid->width = 640;
@@ -266,11 +194,14 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     if (image /*&& image->info.frame_id > lastFrameID*/) {
       hasFrame = true;
       lastFrameID = image->info.frame_id;
-      ARLOGi("Received image set for frame %lli with size %lli*%lli*2.\n",
+      LEAP_IMAGE img = image->image[vid->stereo_part];
+
+      ARLOGi("Received image for frame %lli with size %lli*%lli, stereo_part = %d.\n",
            (long long int)image->info.frame_id,
-           (long long int)image->image[0].properties.width,
-           (long long int)image->image[0].properties.height);
-      src = (ARUint8*)image->image[0].data + image->image[0].offset;
+           (long long int)img.properties.width,
+           (long long int)img.properties.height,
+           vid->stereo_part);
+      src = (ARUint8*)img.data + img.offset;
     } else {
       ARLOGi("No frame.\n");
     }
