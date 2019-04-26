@@ -299,7 +299,7 @@ AR2VideoParamT *ar2VideoOpen(const char *config_in)
         ARLOGe("ar2VideoOpen: Error: module \"Android\" not supported on this build/architecture/system.\n");
 #endif
     }
-    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION {
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
 #ifdef ARVIDEO_INPUT_LEAPMOTION
         if ((vid->moduleParam = (void *)ar2VideoOpenLeapMotion(config)) != NULL) return vid;
 #else
@@ -579,6 +579,11 @@ int ar2VideoGetSize(AR2VideoParamT *vid, int *x,int *y)
         return ar2VideoGetSizeAndroid((AR2VideoParamAndroidT *)vid->moduleParam, x, y);
     }
 #endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoGetSizeLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam, x, y);
+    }
+#endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
     if (vid->module == AR_VIDEO_MODULE_WINDOWS_MEDIA_FOUNDATION) {
         return ar2VideoGetSizeWinMF((AR2VideoParamWinMFT *)vid->moduleParam, x, y);
@@ -633,6 +638,11 @@ AR_PIXEL_FORMAT ar2VideoGetPixelFormat(AR2VideoParamT *vid)
 #ifdef ARVIDEO_INPUT_ANDROID
     if (vid->module == AR_VIDEO_MODULE_ANDROID) {
         return ar2VideoGetPixelFormatAndroid((AR2VideoParamAndroidT *)vid->moduleParam);
+    }
+#endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoGetPixelFormatLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam);
     }
 #endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
