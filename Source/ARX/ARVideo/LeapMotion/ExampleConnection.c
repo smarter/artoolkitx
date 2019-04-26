@@ -30,6 +30,7 @@ static void serviceMessageLoop(void * unused);
 static void* serviceMessageLoop(void * unused);
 #endif
 static void setFrame(const LEAP_TRACKING_EVENT *frame);
+static void setImage(const LEAP_IMAGE_EVENT *frame);
 static void setDevice(const LEAP_DEVICE_INFO *deviceProps);
 
 //External state
@@ -39,6 +40,7 @@ bool IsConnected = false;
 static volatile bool _isRunning = false;
 static LEAP_CONNECTION connectionHandle = NULL;
 static LEAP_TRACKING_EVENT *lastFrame = NULL;
+static LEAP_IMAGE_EVENT *lastImage = NULL;
 static LEAP_DEVICE_INFO *lastDevice = NULL;
 
 //Callback function pointers
@@ -221,6 +223,7 @@ static void handleConfigResponseEvent(const LEAP_CONFIG_RESPONSE_EVENT *config_r
 
 /** Called by serviceMessageLoop() when a point mapping change event is returned by LeapPollConnection(). */
 static void handleImageEvent(const LEAP_IMAGE_EVENT *image_event) {
+  setImage(image_event); //support polling image data from different thread
   if(ConnectionCallbacks.on_image){
     ConnectionCallbacks.on_image(image_event);
   }
@@ -341,6 +344,28 @@ LEAP_TRACKING_EVENT* GetFrame(){
   UnlockMutex(&dataLock);
 
   return currentFrame;
+}
+
+/**
+ * Caches the newest image by copying the tracking event struct returned by
+ * LeapC.
+ */
+void setImage(const LEAP_IMAGE_EVENT *image){
+  LockMutex(&dataLock);
+  if (!lastImage) lastImage = malloc(sizeof(*image));
+  *lastImage = *image;
+  UnlockMutex(&dataLock);
+}
+
+/** Returns a pointer to the cached tracking image. */
+LEAP_IMAGE_EVENT* GetImage(){
+  LEAP_IMAGE_EVENT *currentImage;
+
+  LockMutex(&dataLock);
+  currentImage = lastImage;
+  UnlockMutex(&dataLock);
+
+  return currentImage;
 }
 
 /**

@@ -15,6 +15,7 @@ LEAP_CONNECTION* OpenConnection();
 void CloseConnection();
 void DestroyConnection();
 LEAP_TRACKING_EVENT* GetFrame(); //Used in polling example
+LEAP_IMAGE_EVENT* GetImage();
 LEAP_DEVICE_INFO* GetDeviceProperties(); //Used in polling example
 const char* ResultString(eLeapRS r);
 
