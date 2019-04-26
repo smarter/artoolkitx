@@ -34,6 +34,8 @@ project(artoolkitX
         LANGUAGES CXX C
 )
 
+find_package(LeapSDK 4.0.0 REQUIRED)
+
 if(CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Using multi-configuration CMake generator.")
   set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "Specifies what build types (configurations) will be available." FORCE)

@@ -40,11 +40,17 @@
 
 #ifdef ARVIDEO_INPUT_LEAPMOTION
 
+#include "ExampleConnection.h"
+
 #include <string.h> // memset()
 
 #define AR_VIDEO_LEAPMOTION_XSIZE   640
 #define AR_VIDEO_LEAPMOTION_YSIZE   480
 #define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT   AR_PIXEL_FORMAT_RGB
+
+void OnFrame(const LEAP_TRACKING_EVENT *frame){
+  printf("Got frame: %d\n", (int32_t)frame->tracking_frame_id);
+}
 
 int ar2VideoDispOptionLeapMotion( void )
 {
@@ -82,6 +88,9 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     int bufSizeX;
     int bufSizeY;
     char bufferpow2 = 0;
+
+    //ConnectionCallbacks.on_frame = OnFrame;
+    //OpenConnection();
 
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
