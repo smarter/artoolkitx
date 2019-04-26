@@ -68,6 +68,9 @@
 #ifdef ARVIDEO_INPUT_ANDROID
 #include "Android/videoAndroid.h"
 #endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+#include "LeapMotion/videoLeapMotion.h"
+#endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
 #include "WindowsMediaFoundation/videoWindowsMediaFoundation.h"
 #endif
@@ -137,6 +140,8 @@ static int ar2VideoGetModuleWithConfig(const char *config, const char **configSt
                 module = AR_VIDEO_MODULE_IMAGE;
             } else if (strcmp(b, "-module=Android") == 0)    {
                 module = AR_VIDEO_MODULE_ANDROID;
+            } else if (strcmp(b, "-module=LeapMotion") == 0)    {
+                module = AR_VIDEO_MODULE_LEAPMOTION;
             } else if (strcmp(b, "-module=WinMF") == 0)    {
                 module = AR_VIDEO_MODULE_WINDOWS_MEDIA_FOUNDATION;
             } else if (strcmp(b, "-module=WinMC") == 0)    {
@@ -194,6 +199,11 @@ ARVideoSourceInfoListT *ar2VideoCreateSourceInfoList(const char *config_in)
 #endif
 #ifdef ARVIDEO_INPUT_ANDROID
     if (module == AR_VIDEO_MODULE_ANDROID) {
+        return (NULL);
+    }
+#endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (module == AR_VIDEO_MODULE_LEAPMOTION) {
         return (NULL);
     }
 #endif
@@ -287,6 +297,13 @@ AR2VideoParamT *ar2VideoOpen(const char *config_in)
         ARLOGe("ar2VideoOpen: Error: module \"Android\" requires ar2VideoOpenAsync.\n");
 #else
         ARLOGe("ar2VideoOpen: Error: module \"Android\" not supported on this build/architecture/system.\n");
+#endif
+    }
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION {
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+        if ((vid->moduleParam = (void *)ar2VideoOpenLeapMotion(config)) != NULL) return vid;
+#else
+        ARLOGe("ar2VideoOpen: Error: module \"LeapMotion\" not supported on this build/architecture/system.\n");
 #endif
     }
     if (vid->module == AR_VIDEO_MODULE_WINDOWS_MEDIA_FOUNDATION) {
@@ -387,6 +404,11 @@ int ar2VideoClose(AR2VideoParamT *vid)
         ret = ar2VideoCloseAndroid((AR2VideoParamAndroidT *)vid->moduleParam);
     }
 #endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        ret = ar2VideoCloseLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam);
+    }
+#endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
     if (vid->module == AR_VIDEO_MODULE_WINDOWS_MEDIA_FOUNDATION) {
         ret = ar2VideoCloseWinMF((AR2VideoParamWinMFT *)vid->moduleParam);
@@ -437,6 +459,11 @@ int ar2VideoDispOption(AR2VideoParamT *vid)
 #ifdef ARVIDEO_INPUT_ANDROID
     if (vid->module == AR_VIDEO_MODULE_ANDROID) {
         return ar2VideoDispOptionAndroid();
+    }
+#endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoDispOptionLeapMotion();
     }
 #endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
@@ -494,6 +521,11 @@ int ar2VideoGetId(AR2VideoParamT *vid, ARUint32 *id0, ARUint32 *id1)
 #ifdef ARVIDEO_INPUT_ANDROID
     if (vid->module == AR_VIDEO_MODULE_ANDROID) {
         return ar2VideoGetIdAndroid((AR2VideoParamAndroidT *)vid->moduleParam, id0, id1);
+    }
+#endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoGetIdLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam, id0, id1);
     }
 #endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
@@ -656,6 +688,11 @@ AR2VideoBufferT *ar2VideoGetImage(AR2VideoParamT *vid)
         ret = ar2VideoGetImageAndroid((AR2VideoParamAndroidT *)vid->moduleParam);
     }
 #endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        ret = ar2VideoGetImageLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam);
+    }
+#endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION
     if (vid->module == AR_VIDEO_MODULE_WINDOWS_MEDIA_FOUNDATION) {
         ret = ar2VideoGetImageWinMF((AR2VideoParamWinMFT *)vid->moduleParam);
@@ -737,6 +774,11 @@ int ar2VideoCapStart(AR2VideoParamT *vid)
 #ifdef ARVIDEO_INPUT_ANDROID
     if (vid->module == AR_VIDEO_MODULE_ANDROID) {
         return ar2VideoCapStartAndroid((AR2VideoParamAndroidT *)vid->moduleParam);
+    }
+#endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoCapStartLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam);
     }
 #endif
 #ifdef ARVIDEO_INPUT_WINDOWS_MEDIA_FOUNDATION

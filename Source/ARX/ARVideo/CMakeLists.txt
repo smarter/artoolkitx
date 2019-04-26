@@ -107,6 +107,7 @@ endif()
 if(ARX_TARGET_PLATFORM_WINDOWS)
     add_subdirectory("WindowsMediaFoundation")
     set(DEFINES ${DEFINES} "ARVIDEO_INPUT_DEFAULT_WINDOWS_MEDIA_FOUNDATION")
+    add_subdirectory("LeapMotion")
 endif()
 
 add_library(ARVideo STATIC
