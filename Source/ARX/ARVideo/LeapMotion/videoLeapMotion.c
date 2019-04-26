@@ -89,8 +89,8 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     int bufSizeY;
     char bufferpow2 = 0;
 
-    //ConnectionCallbacks.on_frame = OnFrame;
-    //OpenConnection();
+    ConnectionCallbacks.on_frame = OnFrame;
+    OpenConnection();
 
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
