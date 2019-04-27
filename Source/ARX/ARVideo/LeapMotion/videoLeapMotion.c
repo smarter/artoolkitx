@@ -51,7 +51,8 @@
 #define AR_VIDEO_LEAPMOTION_XSIZE   640
 #define AR_VIDEO_LEAPMOTION_YSIZE   240
 
-
+#define AR_VIDEO_LEAPMOTION_RECTIFIED_XSIZE   400
+#define AR_VIDEO_LEAPMOTION_RECTIFIED_YSIZE   400
 
 #define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT   AR_PIXEL_FORMAT_MONO
 
@@ -59,12 +60,22 @@
 #define ARVIDEO_INPUT_LEAPMOTION_RIGHT_STEREO_PART 1
 #define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART
 
+static LEAP_CONNECTION *connection = NULL;
+
+// Values obtained for Laurent's Leap.
+static const int v_fov = 2.007129;
+static const int h_fov = 2.303835;
+
 int ar2VideoDispOptionLeapMotion( void )
 {
     ARPRINT(" -module=LeapMotion\n");
     ARPRINT("\n");
     ARPRINT(" -stereo_part=N\n");
     ARPRINT("    Either \"left\" or \"right\" stereo part, default to \"left\".\n");
+    ARPRINT(" -rectified\n");
+    ARPRINT("    Rectify image distortion.\n");
+    ARPRINT(" -gain=N\n");
+    ARPRINT("    Multiply each output pixel by this floating-point value.\n");
     ARPRINT("\n");
 
     return 0;
@@ -82,15 +93,19 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
 
     //ConnectionCallbacks.on_frame = OnFrame;
     //ConnectionCallbacks.on_image = OnImage;
-    LEAP_CONNECTION *connection = OpenConnection();
-    LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
+    if (connection == NULL) {
+        connection = OpenConnection();
+        LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
+        ARLOGi("Connected.\n");
+    } else {
+        ARLOGi("Reusing existing connection (not thread-safe).\n");
+    }
 
     // while(!IsConnected) {
     //   ARLOGi("Waiting.\n");
     //   millisleep(100); //wait a bit to let the connection complete
     // }
 
-    ARLOGi("Connected.\n");
 
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
@@ -101,6 +116,8 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     vid->height = AR_VIDEO_LEAPMOTION_YSIZE;
     vid->format = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT;
     vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART;
+    vid->rectified = false;
+    vid->gain = 1.0;
 
     a = config;
     if (a != NULL) {
@@ -109,12 +126,18 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
             if (*a == '\0') break;
 
             if (sscanf(a, "%s", b) == 0) break;
-            if (strncmp(b, "-stereo_part=", 13 ) == 0) {
+            if (strncmp(b, "-stereo_part=", 13) == 0) {
                 if (strcmp(b+13, "left") == 0) {
                     vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART;
                 } else if (strcmp(b+13, "right") == 0) {
                     vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_RIGHT_STEREO_PART;
                 }
+            }
+            else if (strcmp(b, "-rectified") == 0) {
+                vid->rectified = true;
+            }
+            else if (strncmp(b, "-gain", 5) == 0) {
+                sscanf(&b[6], "%lf", &vid->gain);
             }
             else if (strcmp(b, "-module=LeapMotion") == 0) {
             }
@@ -128,12 +151,13 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
         }
     }
 
+    if (vid->rectified) {
+        vid->width = AR_VIDEO_LEAPMOTION_RECTIFIED_XSIZE;
+        vid->height = AR_VIDEO_LEAPMOTION_RECTIFIED_YSIZE;
+    }
+
     bufSizeX = vid->width;
     bufSizeY = vid->height;
-
-    vid->format = AR_PIXEL_FORMAT_MONO;
-    bufSizeX = vid->width = 640;
-    bufSizeY = vid->height = 240;
 
     if (!bufSizeX || !bufSizeY || ar2VideoSetBufferSizeLeapMotion(vid, bufSizeX, bufSizeY) != 0) {
         goto bail;
@@ -192,11 +216,11 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     //   ARLOGi("No frame.\n");
     // }
 
-/*
+
     LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
     if (deviceProps)
       ARLOGi("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
-*/
+
 
     LEAP_IMAGE_EVENT *image = GetImage();
     int hasFrame = false;
@@ -232,10 +256,66 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     if (dst1) memset(dst1, 128, vid->bufWidth*vid->bufHeight/2);
 
     if (hasFrame) {
-        for (int y = 0; y < height; y++) {
-            memcpy(dst, src, width);
-            src += width;
-            dst += vid->bufWidth;
+        if (vid->rectified) {
+            // tan(h_fov/2)
+            const int MAX_FOV = 2.24603794466;
+            if (vid->stereo_part == ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART) {
+                for (float row = 0; row < vid->height; row++) {
+                    for (float col = 0; col < vid->width; col++) {
+                        //Normalize from pixel xy to range [0..1]
+                        LEAP_VECTOR input;
+                        input.x = col/vid->width;
+                        input.y = row/vid->height;
+
+                        //Convert from normalized [0..1] to ray slopes
+                        input.x = (input.x - .5) * MAX_FOV;
+                        input.y = (input.y - .5) * MAX_FOV;
+
+                        LEAP_VECTOR pixel = LeapRectilinearToPixel(*connection,
+                                                                eLeapPerspectiveType_stereo_left,
+                                                                input);
+                        int dindex = (int)floor(row * vid->width + col);
+                        int pindex = (int)roundf(pixel.y) * width + (int)roundf(pixel.x);
+                        if(pixel.x >= 0 && pixel.x < width && pixel.y >=0 && pixel.y < height){
+                            dst[dindex] = min(src[pindex]*vid->gain, 255);
+                        } else {
+                            dst[dindex] = 128;
+                        }
+                    }
+                }
+            } else {
+                for( float row = 0; row < vid->height; row++ ) {
+                    for( float col = 0; col < vid->width; col++ ) {
+
+                        //Normalize from pixel xy to range [0..1]
+                        LEAP_VECTOR input;
+                        input.x = col/vid->width;
+                        input.y = row/vid->height;
+
+                        //Convert from normalized [0..1] to ray slopes
+                        input.x = (input.x - .5) * MAX_FOV;
+                        input.y = (input.y - .5) * MAX_FOV;
+
+                        LEAP_VECTOR pixel = LeapRectilinearToPixel(*connection,
+                                                                eLeapPerspectiveType_stereo_right,
+                                                                input);
+                        int dindex = (int)floor(row * vid->width + col);
+                        int pindex = (int)roundf(pixel.y + height) * width + (int)roundf(pixel.x);
+
+                        if(pixel.x >= 0 && pixel.x < width && pixel.y >=0 && pixel.y < height){
+                            dst[dindex] = min(src[pindex]*vid->gain, 255);
+                        } else {
+                            dst[dindex] = 128;
+                        }
+                    }
+                }
+            }
+        } else {
+            for (int y = 0; y < height; y++) {
+                memcpy(dst, src, width);
+                src += width;
+                dst += vid->bufWidth;
+            }
         }
     }
 
@@ -314,8 +394,8 @@ int ar2VideoSetBufferSizeLeapMotion(AR2VideoParamLeapMotionT *vid, const int wid
 }
 
 int ar2VideoGetCParamLeapMotion(AR2VideoParamLeapMotionT *vid, ARParam *cparam) {
-    double v_fov = M_PI_4; // default value
-    // double v_fov = 2.0; // more accurate but performs worse ?
+    // In rectified mode use the real v_fov, otherwise use the default one which performs better.
+    double fov = vid->rectified ? v_fov : M_PI_4;
     arParamClearWithFOVy(cparam, vid->width, vid->height, v_fov);
     return (0);
 }
