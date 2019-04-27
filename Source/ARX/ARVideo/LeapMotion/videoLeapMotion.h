@@ -65,6 +65,7 @@ AR_PIXEL_FORMAT        ar2VideoGetPixelFormatLeapMotion ( AR2VideoParamLeapMotio
 AR2VideoBufferT       *ar2VideoGetImageLeapMotion       ( AR2VideoParamLeapMotionT *vid );
 int                    ar2VideoCapStartLeapMotion       ( AR2VideoParamLeapMotionT *vid );
 int                    ar2VideoCapStopLeapMotion        ( AR2VideoParamLeapMotionT *vid );
+int                    ar2VideoGetCParamLeapMotion      ( AR2VideoParamLeapMotionT *vid, ARParam *cparam );
 
 int                    ar2VideoGetParamiLeapMotion      ( AR2VideoParamLeapMotionT *vid, int paramName, int *value );
 int                    ar2VideoSetParamiLeapMotion      ( AR2VideoParamLeapMotionT *vid, int paramName, int  value );

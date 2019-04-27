@@ -161,6 +161,43 @@ static void handleDeviceEvent(const LEAP_DEVICE_EVENT *device_event){
   LeapCloseDevice(deviceHandle);
 }
 
+static void handleDeviceStatusChangeEvent(const LEAP_DEVICE_STATUS_CHANGE_EVENT *device_event){
+  LEAP_DEVICE deviceHandle;
+  //Open device using LEAP_DEVICE_REF from event struct.
+  eLeapRS result = LeapOpenDevice(device_event->device, &deviceHandle);
+  if(result != eLeapRS_Success){
+    printf("Could not open device %s.\n", ResultString(result));
+    return;
+  }
+
+  //Create a struct to hold the device properties, we have to provide a buffer for the serial string
+  LEAP_DEVICE_INFO deviceProperties = { sizeof(deviceProperties) };
+  // Start with a length of 1 (pretending we don't know a priori what the length is).
+  // Currently device serial numbers are all the same length, but that could change in the future
+  deviceProperties.serial_length = 1;
+  deviceProperties.serial = malloc(deviceProperties.serial_length);
+  //This will fail since the serial buffer is only 1 character long
+  // But deviceProperties is updated to contain the required buffer length
+  result = LeapGetDeviceInfo(deviceHandle, &deviceProperties);
+  if(result == eLeapRS_InsufficientBuffer){
+    //try again with correct buffer size
+    deviceProperties.serial = realloc(deviceProperties.serial, deviceProperties.serial_length);
+    result = LeapGetDeviceInfo(deviceHandle, &deviceProperties);
+    if(result != eLeapRS_Success){
+      printf("Failed to get device info %s.\n", ResultString(result));
+      free(deviceProperties.serial);
+      return;
+    }
+  }
+  setDevice(&deviceProperties);
+  if(ConnectionCallbacks.on_device_found){
+    ConnectionCallbacks.on_device_found(&deviceProperties);
+  }
+
+  free(deviceProperties.serial);
+  LeapCloseDevice(deviceHandle);
+}
+
 /** Called by serviceMessageLoop() when a device lost event is returned by LeapPollConnection(). */
 static void handleDeviceLostEvent(const LEAP_DEVICE_EVENT *device_event){
   if(ConnectionCallbacks.on_device_lost){
@@ -262,6 +299,7 @@ static void* serviceMessageLoop(void * unused){
       printf("LeapC PollConnection call was %s.\n", ResultString(result));
       continue;
     }
+    //printf("x: %d\n", msg.type);
 
     switch (msg.type){
       case eLeapEventType_Connection:
@@ -273,6 +311,9 @@ static void* serviceMessageLoop(void * unused){
       case eLeapEventType_Device:
         handleDeviceEvent(msg.device_event);
         break;
+      /*case eLeapEventType_DeviceStatusChange:
+        handleDeviceStatusChangeEvent(msg.device_status_change_event);
+        break;*/
       case eLeapEventType_DeviceLost:
         handleDeviceLostEvent(msg.device_event);
         break;

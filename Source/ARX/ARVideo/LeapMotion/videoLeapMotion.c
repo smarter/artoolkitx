@@ -43,9 +43,16 @@
 #include "ExampleConnection.h"
 
 #include <string.h> // memset()
+#ifdef _WIN32
+#  define _USE_MATH_DEFINES
+#endif
+#include <math.h>
 
 #define AR_VIDEO_LEAPMOTION_XSIZE   640
 #define AR_VIDEO_LEAPMOTION_YSIZE   240
+
+
+
 #define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT   AR_PIXEL_FORMAT_MONO
 
 #define ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART 0
@@ -84,9 +91,6 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     // }
 
     ARLOGi("Connected.\n");
-    LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
-    if(deviceProps)
-      ARLOGi("Using device %s.\n", deviceProps->serial);
 
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
@@ -188,6 +192,12 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     //   ARLOGi("No frame.\n");
     // }
 
+/*
+    LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
+    if (deviceProps)
+      ARLOGi("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
+*/
+
     LEAP_IMAGE_EVENT *image = GetImage();
     int hasFrame = false;
     ARUint8 *src = NULL;
@@ -196,7 +206,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
       lastFrameID = image->info.frame_id;
       LEAP_IMAGE img = image->image[vid->stereo_part];
 
-      ARLOGi("Received image for frame %lli with size %lli*%lli, stereo_part = %d.\n",
+      ARLOGd("Received image for frame %lli with size %lli*%lli, stereo_part = %d.\n",
            (long long int)image->info.frame_id,
            (long long int)img.properties.width,
            (long long int)img.properties.height,
@@ -229,359 +239,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
         }
     }
 
-    // // Create 100 x 100 square, oscillating in x dimension.
-    // static int   k = 0;
-    // k++;
-    // if( k > 100 ) k = -100;
-//    int          i, j;
-//     for( j = vid->height/2 - 50; j < vid->height/2 - 25; j++ ) {
-//         for( i = vid->width/2 - 50 + k; i < vid->width/2 + 50 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                 // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-//                     p[(j*vid->bufWidth+i)*2+0] = p[(j*vid->bufWidth+i)*2+1] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x01;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x01;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                 case AR_PIXEL_FORMAT_420f:
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 0;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//     }
-//     for( j = vid->height/2 - 25; j < vid->height/2 + 25; j++ ) {
-//         // Black bar (25 pixels wide).
-//         for( i = vid->width/2 - 50 + k; i < vid->width/2 - 25 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                     // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-//                     p[(j*vid->bufWidth+i)*2+0] = p[(j*vid->bufWidth+i)*2+1] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x01;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x01;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                 case AR_PIXEL_FORMAT_420f:
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 0;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//         // Red bar (17 pixels wide).
-//         for( i = vid->width/2 - 25 + k; i < vid->width/2 - 8 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                     p[(j*vid->bufWidth+i)*3+0] = 255; p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = 0; p[(j*vid->bufWidth+i)*3+2] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = 0; p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = 255; p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                 // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0xf8; p[(j*vid->bufWidth+i)*2+0] = 0;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0xf8; p[(j*vid->bufWidth+i)*2+1] = 0;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0xf8; p[(j*vid->bufWidth+i)*2+0] = 0x01;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0xf8; p[(j*vid->bufWidth+i)*2+1] = 0x01;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0xf0; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0xf0; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                     p[j*vid->bufWidth+i] = 76;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 255; p1[(j/2)*vid->bufWidth+i+1] = 86;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_420f:
-//                     p[j*vid->bufWidth+i] = 76;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 86; p1[(j/2)*vid->bufWidth+i+1] = 255;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 76;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//         // Green bar (16 pixels wide).
-//         for( i = vid->width/2 - 8 + k; i < vid->width/2 + 8 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = 0; p[(j*vid->bufWidth+i)*3+1] = 255; p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = 0; p[(j*vid->bufWidth+i)*4+1] = 255; p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = 0; p[(j*vid->bufWidth+i)*4+2] = 255; p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                 // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0x07; p[(j*vid->bufWidth+i)*2+0] = 0xe0;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0x07; p[(j*vid->bufWidth+i)*2+1] = 0xe0;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0x07; p[(j*vid->bufWidth+i)*2+0] = 0xc1;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0x07; p[(j*vid->bufWidth+i)*2+1] = 0xc1;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0x0f; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0x0f; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                 case AR_PIXEL_FORMAT_NV21:
-//                     p[j*vid->bufWidth+i] = 150;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 21; p1[(j/2)*vid->bufWidth+i+1] = 44;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_420f:
-//                     p[j*vid->bufWidth+i] = 150;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 44; p1[(j/2)*vid->bufWidth+i+1] = 21;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 150;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//         // Blue bar (17 pixels wide).
-//         for( i = vid->width/2 + 8 + k; i < vid->width/2 + 25 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = 0; p[(j*vid->bufWidth+i)*3+2] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = 255; p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = 0; p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = 255; p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                 // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x1f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x1f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x3f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x3f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0xff;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0xff;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                     p[j*vid->bufWidth+i] = 29;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 118; p1[(j/2)*vid->bufWidth+i+1] = 255;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_420f:
-//                     p[j*vid->bufWidth+i] = 29;
-//                     if ((j & 1) == 0 && (i & 1) == 0) {
-//                         p1[(j/2)*vid->bufWidth+i] = 255; p1[(j/2)*vid->bufWidth+i+1] = 118;
-//                     }
-//                     break;
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 29;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//         // Black bar (25 pixels wide).
-//         for( i = vid->width/2 + 25 + k; i < vid->width/2 + 50 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                     // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-//                     p[(j*vid->bufWidth+i)*2+0] = p[(j*vid->bufWidth+i)*2+1] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x01;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x01;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                 case AR_PIXEL_FORMAT_420f:
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 0;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//     }
-//     for( j = vid->height/2 + 25; j < vid->height/2 + 50; j++ ) {
-//         for( i = vid->width/2 - 50 + k; i < vid->width/2 + 50 + k; i++ ) {
-//             switch (vid->format) {
-//                 case AR_PIXEL_FORMAT_RGB:
-//                 case AR_PIXEL_FORMAT_BGR:
-//                     p[(j*vid->bufWidth+i)*3+0] = p[(j*vid->bufWidth+i)*3+1] = p[(j*vid->bufWidth+i)*3+2] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA:
-//                 case AR_PIXEL_FORMAT_BGRA:
-//                     p[(j*vid->bufWidth+i)*4+0] = p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = 0; p[(j*vid->bufWidth+i)*4+3] = 255;
-//                     break;
-//                 case AR_PIXEL_FORMAT_ARGB:
-//                 case AR_PIXEL_FORMAT_ABGR:
-//                     p[(j*vid->bufWidth+i)*4+0] = 255; p[(j*vid->bufWidth+i)*4+1] = p[(j*vid->bufWidth+i)*4+2] = p[(j*vid->bufWidth+i)*4+3] = 0;
-//                     break;
-//                     // Packed pixel formats are endianness-dependent.
-//                 case AR_PIXEL_FORMAT_RGB_565:
-//                     p[(j*vid->bufWidth+i)*2+0] = p[(j*vid->bufWidth+i)*2+1] = 0;
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_5551:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x01;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x01;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_RGBA_4444:
-// #ifdef AR_LITTLE_ENDIAN
-//                     p[(j*vid->bufWidth+i)*2+1] = 0; p[(j*vid->bufWidth+i)*2+0] = 0x0f;
-// #else
-//                     p[(j*vid->bufWidth+i)*2+0] = 0; p[(j*vid->bufWidth+i)*2+1] = 0x0f;
-// #endif
-//                     break;
-//                 case AR_PIXEL_FORMAT_NV21:
-//                 case AR_PIXEL_FORMAT_420f:
-//                 case AR_PIXEL_FORMAT_MONO:
-//                     p[j*vid->bufWidth+i] = 0;
-//                     break;
-//                 default:
-//                     break;
-//             }
-//         }
-//     }
-
+    // TODO: check what these flags do
     vid->buffer.fillFlag  = 1;
     vid->buffer.time.sec  = 0;
     vid->buffer.time.usec = 0;
@@ -652,6 +310,13 @@ int ar2VideoSetBufferSizeLeapMotion(AR2VideoParamLeapMotionT *vid, const int wid
     vid->bufWidth = width;
     vid->bufHeight = height;
 
+    return (0);
+}
+
+int ar2VideoGetCParamLeapMotion(AR2VideoParamLeapMotionT *vid, ARParam *cparam) {
+    double v_fov = M_PI_4; // default value
+    // double v_fov = 2.0; // more accurate but performs worse ?
+    arParamClearWithFOVy(cparam, vid->width, vid->height, v_fov);
     return (0);
 }
 

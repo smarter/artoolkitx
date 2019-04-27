@@ -1260,6 +1260,11 @@ int ar2VideoGetCParam(AR2VideoParamT *vid, ARParam *cparam)
         return ar2VideoGetCParamAVFoundation((AR2VideoParamAVFoundationT *)vid->moduleParam, cparam);
     }
 #endif
+#ifdef ARVIDEO_INPUT_LEAPMOTION
+    if (vid->module == AR_VIDEO_MODULE_LEAPMOTION) {
+        return ar2VideoGetCParamLeapMotion((AR2VideoParamLeapMotionT *)vid->moduleParam, cparam);
+    }
+#endif
     return (-1);
 }
 
