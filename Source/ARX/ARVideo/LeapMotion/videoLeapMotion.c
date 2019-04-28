@@ -219,7 +219,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
 
     LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
     if (deviceProps)
-      ARLOGi("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
+      ARLOGd("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
 
 
     LEAP_IMAGE_EVENT *image = GetImage();
