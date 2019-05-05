@@ -177,10 +177,11 @@ int ar2VideoCloseLeapMotion( AR2VideoParamLeapMotionT *vid )
 {
     if (!vid) return (-1); // Sanity check.
 
-    CloseConnection();
     connectionRef--;
-    if (connectionRef == 0)
+    if (connectionRef == 0) {
+        CloseConnection();
         connection = NULL;
+    }
 
     ar2VideoSetBufferSizeLeapMotion(vid, 0, 0);
     free( vid );
