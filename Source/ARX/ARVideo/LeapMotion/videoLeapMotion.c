@@ -61,6 +61,7 @@
 #define ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART ARVIDEO_INPUT_LEAPMOTION_LEFT_STEREO_PART
 
 static LEAP_CONNECTION *connection = NULL;
+static int connectionRef = 0;
 
 // Values obtained for Laurent's Leap.
 static const int v_fov = 2.007129;
@@ -100,6 +101,7 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     } else {
         ARLOGi("Reusing existing connection (not thread-safe).\n");
     }
+    connectionRef++;
 
     // while(!IsConnected) {
     //   ARLOGi("Waiting.\n");
@@ -176,6 +178,9 @@ int ar2VideoCloseLeapMotion( AR2VideoParamLeapMotionT *vid )
     if (!vid) return (-1); // Sanity check.
 
     CloseConnection();
+    connectionRef--;
+    if (connectionRef == 0)
+        connection = NULL;
 
     ar2VideoSetBufferSizeLeapMotion(vid, 0, 0);
     free( vid );
@@ -219,7 +224,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
 
     LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
     if (deviceProps)
-      ARLOGd("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
+      ARLOGi("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
 
 
     LEAP_IMAGE_EVENT *image = GetImage();
