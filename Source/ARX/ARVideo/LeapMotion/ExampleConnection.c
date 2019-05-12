@@ -283,7 +283,7 @@ static void* serviceMessageLoop(void * unused){
     unsigned int timeout = 1000;
 
 	//printf("BEGIN serviceMessageLoop\n");
-	LockMutex(&dataLock);
+	//LockMutex(&dataLock);
 
 	//printf("BEGIN poll\n");
     result = LeapPollConnection(connectionHandle, timeout, &msg);
@@ -353,8 +353,8 @@ static void* serviceMessageLoop(void * unused){
         printf("Unhandled message type %i.\n", msg.type);
     } //switch on msg.type
 
-	UnlockMutex(&dataLock);
-	//printf("END serviceMessageLoop\n");
+	//UnlockMutex(&dataLock);
+	printf("END serviceMessageLoop\n");
   }
 #if !defined(_MSC_VER)
   return NULL;
@@ -390,19 +390,19 @@ LEAP_TRACKING_EVENT* GetFrame(){
  * LeapC.
  */
 void setImage(const LEAP_IMAGE_EVENT *image){
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   if (!lastImage) lastImage = malloc(sizeof(*image));
   *lastImage = *image;
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached tracking image. */
 LEAP_IMAGE_EVENT* GetImage(){
   LEAP_IMAGE_EVENT *currentImage;
 
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   currentImage = lastImage;
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
 
   return currentImage;
 }

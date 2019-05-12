@@ -240,7 +240,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     //   ARLOGi("No frame.\n");
     // }
 	//printf("BEGIN getImage\n");
-	LockMutex(&dataLock);
+	//LockMutex(&dataLock);
 
 	//printf("BEGIN getDevice\n");
 	LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
@@ -345,7 +345,7 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
             }
         }
     }
-	UnlockMutex(&dataLock);
+	//UnlockMutex(&dataLock);
 	//printf("END getImage\n");
 
     // TODO: check what these flags do
