@@ -63,7 +63,24 @@
 static LEAP_CONNECTION *connection = NULL;
 static int connectionRef = 0;
 
-// Values obtained for Laurent's Leap.
+static void *allocate(uint32_t size, eLeapAllocatorType typeHint, void *state)
+{
+	void* ptr = malloc(size);
+	return ptr;
+}
+
+static void deallocate(void *ptr, void* state)
+{
+	if (!ptr)
+		return;
+	//LockMutex(&dataLock);
+	free(ptr);
+	//UnlockMutex(&dataLock);
+}
+
+static LEAP_ALLOCATOR allocator = { allocate, deallocate, NULL };
+
+// Seems to be the same in every Leap Motion device, so no need to fetch them dynamically
 static const int v_fov = 2.007129;
 static const int h_fov = 2.303835;
 
@@ -94,13 +111,14 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
 
     //ConnectionCallbacks.on_frame = OnFrame;
     //ConnectionCallbacks.on_image = OnImage;
-    if (connection == NULL) {
+    //if (connection == NULL) {
         connection = OpenConnection();
+		LeapSetAllocator(*connection, &allocator);
         LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
         ARLOGi("Connected.\n");
-    } else {
-        ARLOGi("Reusing existing connection (not thread-safe).\n");
-    }
+    //} else {
+    //    ARLOGi("Reusing existing connection (not thread-safe).\n");
+    //}
     connectionRef++;
 
     // while(!IsConnected) {
@@ -177,11 +195,11 @@ int ar2VideoCloseLeapMotion( AR2VideoParamLeapMotionT *vid )
 {
     if (!vid) return (-1); // Sanity check.
 
-    connectionRef--;
-    if (connectionRef == 0) {
+    //connectionRef--;
+    //if (connectionRef == 0) {
         CloseConnection();
         connection = NULL;
-    }
+    //}
 
     ar2VideoSetBufferSizeLeapMotion(vid, 0, 0);
     free( vid );
@@ -221,11 +239,14 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
     // } else {
     //   ARLOGi("No frame.\n");
     // }
+	//printf("BEGIN getImage\n");
+	LockMutex(&dataLock);
 
-
-    LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
-    if (deviceProps)
-      ARLOGi("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
+	//printf("BEGIN getDevice\n");
+	LEAP_DEVICE_INFO* deviceProps = GetDeviceProperties();
+	//printf("END getDevice\n");
+	//if (deviceProps)
+    //  ARLOGd("Using device %s, h_fov = %f, v_fov = %f\n", deviceProps->serial, deviceProps->h_fov, deviceProps->v_fov);
 
 
     LEAP_IMAGE_EVENT *image = GetImage();
@@ -236,11 +257,11 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
       lastFrameID = image->info.frame_id;
       LEAP_IMAGE img = image->image[vid->stereo_part];
 
-      ARLOGd("Received image for frame %lli with size %lli*%lli, stereo_part = %d.\n",
+      /*ARLOGd("Received image for frame %lli with size %lli*%lli, stereo_part = %d.\n",
            (long long int)image->info.frame_id,
            (long long int)img.properties.width,
            (long long int)img.properties.height,
-           vid->stereo_part);
+           vid->stereo_part);*/
       src = (ARUint8*)img.data + img.offset;
     } else {
       ARLOGi("No frame.\n");
@@ -324,6 +345,8 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
             }
         }
     }
+	UnlockMutex(&dataLock);
+	//printf("END getImage\n");
 
     // TODO: check what these flags do
     vid->buffer.fillFlag  = 1;

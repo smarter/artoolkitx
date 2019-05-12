@@ -10,6 +10,25 @@
 
 #include "LeapC.h"
 
+#if defined(_MSC_VER)
+#include <Windows.h>
+#include <process.h>
+#define LockMutex EnterCriticalSection
+#define UnlockMutex LeaveCriticalSection
+#else
+#include <unistd.h>
+#include <pthread.h>
+#define LockMutex pthread_mutex_lock
+#define UnlockMutex pthread_mutex_unlock
+#endif
+
+//Threading variables
+#if defined(_MSC_VER)
+CRITICAL_SECTION dataLock;
+#else
+pthread_mutex_t dataLock;
+#endif
+
 /* Client functions */
 LEAP_CONNECTION* OpenConnection();
 void CloseConnection();

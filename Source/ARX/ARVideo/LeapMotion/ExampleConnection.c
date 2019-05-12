@@ -10,17 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#if defined(_MSC_VER)
-  #include <Windows.h>
-  #include <process.h>
-  #define LockMutex EnterCriticalSection
-  #define UnlockMutex LeaveCriticalSection
-#else
-  #include <unistd.h>
-  #include <pthread.h>
-  #define LockMutex pthread_mutex_lock
-  #define UnlockMutex pthread_mutex_unlock
-#endif
 
 
 //Forward declarations
@@ -42,17 +31,14 @@ static LEAP_CONNECTION connectionHandle = NULL;
 static LEAP_TRACKING_EVENT *lastFrame = NULL;
 static LEAP_IMAGE_EVENT *lastImage = NULL;
 static LEAP_DEVICE_INFO *lastDevice = NULL;
-
 //Callback function pointers
 struct Callbacks ConnectionCallbacks;
 
 //Threading variables
 #if defined(_MSC_VER)
 static HANDLE pollingThread;
-static CRITICAL_SECTION dataLock;
 #else
 static pthread_t pollingThread;
-static pthread_mutex_t dataLock;
 #endif
 
 /**
@@ -69,6 +55,8 @@ LEAP_CONNECTION* OpenConnection(){
       _isRunning = true;
 #if defined(_MSC_VER)
       InitializeCriticalSection(&dataLock);
+	  printf("Initialized critical section\n");
+	  //exit(0);
       pollingThread = (HANDLE)_beginthread(serviceMessageLoop, 0, NULL);
 #else
       pthread_create(&pollingThread, NULL, serviceMessageLoop, NULL);
@@ -293,7 +281,14 @@ static void* serviceMessageLoop(void * unused){
   LEAP_CONNECTION_MESSAGE msg;
   while(_isRunning){
     unsigned int timeout = 1000;
+
+	//printf("BEGIN serviceMessageLoop\n");
+	LockMutex(&dataLock);
+
+	//printf("BEGIN poll\n");
     result = LeapPollConnection(connectionHandle, timeout, &msg);
+	//printf("END poll\n");
+
 
     if(result != eLeapRS_Success){
       printf("LeapC PollConnection call was %s.\n", ResultString(result));
@@ -357,6 +352,9 @@ static void* serviceMessageLoop(void * unused){
         //discard unknown message types
         printf("Unhandled message type %i.\n", msg.type);
     } //switch on msg.type
+
+	UnlockMutex(&dataLock);
+	//printf("END serviceMessageLoop\n");
   }
 #if !defined(_MSC_VER)
   return NULL;
@@ -370,19 +368,19 @@ static void* serviceMessageLoop(void * unused){
  * LeapC.
  */
 void setFrame(const LEAP_TRACKING_EVENT *frame){
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   if(!lastFrame) lastFrame = malloc(sizeof(*frame));
   *lastFrame = *frame;
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached tracking frame. */
 LEAP_TRACKING_EVENT* GetFrame(){
   LEAP_TRACKING_EVENT *currentFrame;
 
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   currentFrame = lastFrame;
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
 
   return currentFrame;
 }
@@ -392,19 +390,19 @@ LEAP_TRACKING_EVENT* GetFrame(){
  * LeapC.
  */
 void setImage(const LEAP_IMAGE_EVENT *image){
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   if (!lastImage) lastImage = malloc(sizeof(*image));
   *lastImage = *image;
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached tracking image. */
 LEAP_IMAGE_EVENT* GetImage(){
   LEAP_IMAGE_EVENT *currentImage;
 
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   currentImage = lastImage;
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
 
   return currentImage;
 }
@@ -414,7 +412,7 @@ LEAP_IMAGE_EVENT* GetImage(){
  * LeapC.
  */
 static void setDevice(const LEAP_DEVICE_INFO *deviceProps){
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   if(lastDevice){
     free(lastDevice->serial);
   } else {
@@ -423,15 +421,15 @@ static void setDevice(const LEAP_DEVICE_INFO *deviceProps){
   *lastDevice = *deviceProps;
   lastDevice->serial = malloc(deviceProps->serial_length);
   memcpy(lastDevice->serial, deviceProps->serial, deviceProps->serial_length);
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached device info. */
 LEAP_DEVICE_INFO* GetDeviceProperties(){
   LEAP_DEVICE_INFO *currentDevice;
-  LockMutex(&dataLock);
+  //LockMutex(&dataLock);
   currentDevice = lastDevice;
-  UnlockMutex(&dataLock);
+  //UnlockMutex(&dataLock);
   return currentDevice;
 }
 
