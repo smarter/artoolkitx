@@ -55,6 +55,7 @@ typedef struct {
     int                bufHeight;
     int                stereo_part;
     int                rectified;
+	int                no_deallocate;
     double             gain;
 } AR2VideoParamLeapMotionT;
 

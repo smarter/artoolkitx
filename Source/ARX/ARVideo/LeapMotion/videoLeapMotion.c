@@ -63,22 +63,21 @@
 static LEAP_CONNECTION *connection = NULL;
 static int connectionRef = 0;
 
-static void *allocate(uint32_t size, eLeapAllocatorType typeHint, void *state)
+static void *customAllocate(uint32_t size, eLeapAllocatorType typeHint, void *state)
 {
 	void* ptr = malloc(size);
 	return ptr;
 }
 
-static void deallocate(void *ptr, void* state)
+static void customDeallocate(void *ptr, void* state)
 {
 	if (!ptr)
 		return;
-	//LockMutex(&dataLock);
-	free(ptr);
-	//UnlockMutex(&dataLock);
+	// Don't deallocate to avoid multi-threading issues
+	//free(ptr);
 }
 
-static LEAP_ALLOCATOR allocator = { allocate, deallocate, NULL };
+static LEAP_ALLOCATOR neverDealloc = { customAllocate, customDeallocate, NULL };
 
 // Seems to be the same in every Leap Motion device, so no need to fetch them dynamically
 static const int v_fov = 2.007129;
@@ -94,6 +93,8 @@ int ar2VideoDispOptionLeapMotion( void )
     ARPRINT("    Rectify image distortion.\n");
     ARPRINT(" -gain=N\n");
     ARPRINT("    Multiply each output pixel by this floating-point value.\n");
+	ARPRINT(" -no-deallocate\n");
+	ARPRINT("    Never deallocate any image buffer to workaround multi-threading issues.\n");
     ARPRINT("\n");
 
     return 0;
@@ -109,24 +110,6 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     int bufSizeY;
     char bufferpow2 = 0;
 
-    //ConnectionCallbacks.on_frame = OnFrame;
-    //ConnectionCallbacks.on_image = OnImage;
-    //if (connection == NULL) {
-        connection = OpenConnection();
-		LeapSetAllocator(*connection, &allocator);
-        LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
-        ARLOGi("Connected.\n");
-    //} else {
-    //    ARLOGi("Reusing existing connection (not thread-safe).\n");
-    //}
-    connectionRef++;
-
-    // while(!IsConnected) {
-    //   ARLOGi("Waiting.\n");
-    //   millisleep(100); //wait a bit to let the connection complete
-    // }
-
-
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
     vid->buffer.bufPlanes = NULL;
@@ -137,6 +120,7 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     vid->format = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT;
     vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART;
     vid->rectified = false;
+	vid->no_deallocate = false;
     vid->gain = 1.0;
 
     a = config;
@@ -159,6 +143,9 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
             else if (strncmp(b, "-gain", 5) == 0) {
                 sscanf(&b[6], "%lf", &vid->gain);
             }
+			else if (strcmp(b, "-no-deallocate") == 0) {
+				vid->no_deallocate = true;
+			}
             else if (strcmp(b, "-module=LeapMotion") == 0) {
             }
             else {
@@ -178,6 +165,24 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
 
     bufSizeX = vid->width;
     bufSizeY = vid->height;
+
+	//ConnectionCallbacks.on_frame = OnFrame;
+	//ConnectionCallbacks.on_image = OnImage;
+	//if (connection == NULL) {
+	connection = OpenConnection();
+	if (vid->no_deallocate)
+		LeapSetAllocator(*connection, &neverDealloc);
+	LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
+	ARLOGi("Connected.\n");
+	//} else {
+	//    ARLOGi("Reusing existing connection (not thread-safe).\n");
+	//}
+	connectionRef++;
+
+	// while(!IsConnected) {
+	//   ARLOGi("Waiting.\n");
+	//   millisleep(100); //wait a bit to let the connection complete
+	// }
 
     if (!bufSizeX || !bufSizeY || ar2VideoSetBufferSizeLeapMotion(vid, bufSizeX, bufSizeY) != 0) {
         goto bail;
@@ -339,7 +344,9 @@ AR2VideoBufferT *ar2VideoGetImageLeapMotion( AR2VideoParamLeapMotionT *vid )
             }
         } else {
             for (int y = 0; y < height; y++) {
-                memcpy(dst, src, width);
+				for (int x = 0; x < width; x++) {
+					dst[x] = min(src[x] * vid->gain, 255);
+				}
                 src += width;
                 dst += vid->bufWidth;
             }
@@ -424,7 +431,7 @@ int ar2VideoSetBufferSizeLeapMotion(AR2VideoParamLeapMotionT *vid, const int wid
 
 int ar2VideoGetCParamLeapMotion(AR2VideoParamLeapMotionT *vid, ARParam *cparam) {
     // In rectified mode use the real v_fov, otherwise use the default one which performs better.
-    double fov = vid->rectified ? v_fov : M_PI_4;
+	double fov = vid->rectified ? v_fov : M_PI_4;
     arParamClearWithFOVy(cparam, vid->width, vid->height, v_fov);
     return (0);
 }

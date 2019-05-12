@@ -354,7 +354,7 @@ static void* serviceMessageLoop(void * unused){
     } //switch on msg.type
 
 	//UnlockMutex(&dataLock);
-	printf("END serviceMessageLoop\n");
+	//printf("END serviceMessageLoop\n");
   }
 #if !defined(_MSC_VER)
   return NULL;
@@ -368,19 +368,19 @@ static void* serviceMessageLoop(void * unused){
  * LeapC.
  */
 void setFrame(const LEAP_TRACKING_EVENT *frame){
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   if(!lastFrame) lastFrame = malloc(sizeof(*frame));
   *lastFrame = *frame;
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached tracking frame. */
 LEAP_TRACKING_EVENT* GetFrame(){
   LEAP_TRACKING_EVENT *currentFrame;
 
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   currentFrame = lastFrame;
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
 
   return currentFrame;
 }
@@ -412,7 +412,7 @@ LEAP_IMAGE_EVENT* GetImage(){
  * LeapC.
  */
 static void setDevice(const LEAP_DEVICE_INFO *deviceProps){
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   if(lastDevice){
     free(lastDevice->serial);
   } else {
@@ -421,15 +421,15 @@ static void setDevice(const LEAP_DEVICE_INFO *deviceProps){
   *lastDevice = *deviceProps;
   lastDevice->serial = malloc(deviceProps->serial_length);
   memcpy(lastDevice->serial, deviceProps->serial, deviceProps->serial_length);
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
 }
 
 /** Returns a pointer to the cached device info. */
 LEAP_DEVICE_INFO* GetDeviceProperties(){
   LEAP_DEVICE_INFO *currentDevice;
-  //LockMutex(&dataLock);
+  LockMutex(&dataLock);
   currentDevice = lastDevice;
-  //UnlockMutex(&dataLock);
+  UnlockMutex(&dataLock);
   return currentDevice;
 }
 
