@@ -168,15 +168,15 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
 
 	//ConnectionCallbacks.on_frame = OnFrame;
 	//ConnectionCallbacks.on_image = OnImage;
-	//if (connection == NULL) {
-	connection = OpenConnection();
-	if (vid->no_deallocate)
-		LeapSetAllocator(*connection, &neverDealloc);
-	LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
-	ARLOGi("Connected.\n");
-	//} else {
-	//    ARLOGi("Reusing existing connection (not thread-safe).\n");
-	//}
+	if (connection == NULL) {
+		connection = OpenConnection();
+		if (vid->no_deallocate)
+			LeapSetAllocator(*connection, &neverDealloc);
+		LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
+		ARLOGi("Connected.\n");
+	} else {
+	    ARLOGi("Reusing existing connection (not thread-safe).\n");
+	}
 	connectionRef++;
 
 	// while(!IsConnected) {
@@ -200,11 +200,11 @@ int ar2VideoCloseLeapMotion( AR2VideoParamLeapMotionT *vid )
 {
     if (!vid) return (-1); // Sanity check.
 
-    //connectionRef--;
-    //if (connectionRef == 0) {
+    connectionRef--;
+    if (connectionRef == 0) {
         CloseConnection();
         connection = NULL;
-    //}
+    }
 
     ar2VideoSetBufferSizeLeapMotion(vid, 0, 0);
     free( vid );
