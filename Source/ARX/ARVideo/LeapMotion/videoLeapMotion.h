@@ -41,12 +41,21 @@
 
 
 #include <ARX/ARVideo/video.h>
+#include "LeapC.h"
 
 #ifdef  __cplusplus
 extern "C" {
 #endif
 
+
+typedef struct alloc_state {
+	uint8_t *memory;
+	int index;
+} alloc_state;
+
 typedef struct {
+	alloc_state        allocator_state;
+	LEAP_ALLOCATOR     allocator;
     AR2VideoBufferT    buffer;
     int                width;
     int                height;
@@ -55,7 +64,6 @@ typedef struct {
     int                bufHeight;
     int                stereo_part;
     int                rectified;
-	int                no_deallocate;
     double             gain;
 } AR2VideoParamLeapMotionT;
 

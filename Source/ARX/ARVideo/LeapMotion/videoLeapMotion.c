@@ -48,6 +48,9 @@
 #endif
 #include <math.h>
 
+#define MEMORY_SIZE 1024*1024*1024
+#define MEMORY_OFFSET 10*1024
+
 #define AR_VIDEO_LEAPMOTION_XSIZE   640
 #define AR_VIDEO_LEAPMOTION_YSIZE   240
 
@@ -63,21 +66,28 @@
 static LEAP_CONNECTION *connection = NULL;
 static int connectionRef = 0;
 
-static void *customAllocate(uint32_t size, eLeapAllocatorType typeHint, void *state)
+
+static void *customAllocate(uint32_t size, eLeapAllocatorType typeHint, alloc_state *state)
 {
-	void* ptr = malloc(size);
+	if (state->index + size > MEMORY_SIZE) {
+		// By now, the memory allocated at the beginning of the array has hopefully been deallocated,
+		// so we can reuse it. We start from MEMORY_OFFSET insteadf of 0 in case
+		// the Leap SDK allocated some long-living data structures there.
+		// Yes, this is completely crazy, but it's the best I can do given that the Leap SDK is proprietary.
+		state->index = MEMORY_OFFSET;
+	}
+
+	void *ptr = state->memory + state->index;
+
+	state->index += size;
+
 	return ptr;
 }
 
-static void customDeallocate(void *ptr, void* state)
+static void customDeallocate(void *ptr, alloc_state *state)
 {
-	if (!ptr)
-		return;
-	// Don't deallocate to avoid multi-threading issues
-	//free(ptr);
+	// Do nothing.
 }
-
-static LEAP_ALLOCATOR neverDealloc = { customAllocate, customDeallocate, NULL };
 
 // Seems to be the same in every Leap Motion device, so no need to fetch them dynamically
 static const int v_fov = 2.007129;
@@ -93,8 +103,6 @@ int ar2VideoDispOptionLeapMotion( void )
     ARPRINT("    Rectify image distortion.\n");
     ARPRINT(" -gain=N\n");
     ARPRINT("    Multiply each output pixel by this floating-point value.\n");
-	ARPRINT(" -no-deallocate\n");
-	ARPRINT("    Never deallocate any image buffer to workaround multi-threading issues.\n");
     ARPRINT("\n");
 
     return 0;
@@ -111,6 +119,13 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     char bufferpow2 = 0;
 
     arMalloc(vid, AR2VideoParamLeapMotionT, 1);
+
+	vid->allocator_state.memory = malloc(MEMORY_SIZE);
+	vid->allocator_state.index = 0;
+	vid->allocator.state = &vid->allocator_state;
+	vid->allocator.allocate = customAllocate;
+	vid->allocator.deallocate = customDeallocate;
+
     vid->buffer.buff = vid->buffer.buffLuma = NULL;
     vid->buffer.bufPlanes = NULL;
     vid->buffer.bufPlaneCount = 0;
@@ -120,7 +135,6 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
     vid->format = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_PIXEL_FORMAT;
     vid->stereo_part = ARVIDEO_INPUT_LEAPMOTION_DEFAULT_STEREO_PART;
     vid->rectified = false;
-	vid->no_deallocate = false;
     vid->gain = 1.0;
 
     a = config;
@@ -143,9 +157,6 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
             else if (strncmp(b, "-gain", 5) == 0) {
                 sscanf(&b[6], "%lf", &vid->gain);
             }
-			else if (strcmp(b, "-no-deallocate") == 0) {
-				vid->no_deallocate = true;
-			}
             else if (strcmp(b, "-module=LeapMotion") == 0) {
             }
             else {
@@ -170,8 +181,7 @@ AR2VideoParamLeapMotionT *ar2VideoOpenLeapMotion( const char *config )
 	//ConnectionCallbacks.on_image = OnImage;
 	if (connection == NULL) {
 		connection = OpenConnection();
-		if (vid->no_deallocate)
-			LeapSetAllocator(*connection, &neverDealloc);
+		LeapSetAllocator(*connection, &vid->allocator);
 		LeapSetPolicyFlags(*connection, eLeapPolicyFlag_Images, 0);
 		ARLOGi("Connected.\n");
 	} else {
@@ -207,6 +217,7 @@ int ar2VideoCloseLeapMotion( AR2VideoParamLeapMotionT *vid )
     }
 
     ar2VideoSetBufferSizeLeapMotion(vid, 0, 0);
+	free(vid->allocator_state.memory);
     free( vid );
 
     return 0;
