@@ -67,6 +67,15 @@ endif()
 
 include(${ARTOOLKITX_HOME}/SDK/lib/ARX/ARX.cmake)
 
+set(OpenCV_PATH "${ARTOOLKITX_HOME}/Source/depends/windows")
+find_package(OpenCV)
+if(OpenCV_FOUND)
+    set(HAVE_OPENCV 1)
+    set(HAVE_2D 1)
+else()
+    message(WARNING "OpenCV not found, will build without 2D tracker" )
+endif()
+
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}")
@@ -80,6 +89,11 @@ set(SOURCE
     ../main.cpp
     ../draw.h
     ../draw.cpp
+    ../../../Source/ARX/AR/icpCalibStereo.c
+    ../../../Source/ARX/AR/icpCore.c
+    ../../../Source/ARX/AR/icpHandle.c
+    ../../../Source/ARX/AR/icpPoint.c
+    ../../../Source/ARX/AR/icpUtil.c
     ${RESOURCES}
     ${FRAMEWORKS}
 )
@@ -98,6 +112,10 @@ set_target_properties(${PROJECT_NAME} PROPERTIES
 target_link_libraries(${PROJECT_NAME}
     ARX
     ${SDL2_LIBRARY}
+    "${ARTOOLKITX_HOME}/Source/depends/windows/lib/x64/opencv_calib3d341d.lib"
+    "${ARTOOLKITX_HOME}/Source/depends/windows/lib/x64/opencv_core341d.lib"
+    "${ARTOOLKITX_HOME}/Source/depends/windows/lib/x64/opencv_features2d341d.lib"
+    "${ARTOOLKITX_HOME}/Source/depends/windows/lib/x64/opencv_imgproc341d.lib"
 )
 
 if(OPENGL_FOUND)
